@@ -4,3 +4,5 @@ This repository contains OpenFOAM simulation cases based on SRFSimpleFoam solver
 - PM_Medium_Mesh
 - TM_Medium_Mesh
 
+
+Note: Extract faces.zip inside constant/polyMesh/ before starting the simulation. 
