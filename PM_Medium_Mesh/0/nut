@@ -1,0 +1,60 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  10
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       volScalarField;
+    location    "0";
+    object      nut;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+//In the k-epsilon model, in the turbulent core, nut =rho* C_niu*k^2/epsilon. This equation, however, is not adequate to compute nut in the first node near the wall , where y+ < 300. This is why you need to supply another equation to compute nut.
+
+dimensions      [0 2 -1 0 0 0 0];
+
+internalField   uniform 0;
+
+boundaryField
+{
+    INFLOW
+    {
+        type            calculated;
+        value           $internalField;
+    }
+    OUTFLOW
+    {
+        type            calculated;
+        value           $internalField;
+    }
+	BLADE
+    {
+        type            nutUSpaldingWallFunction;
+        value           $internalField;
+    }
+    HUB
+    {
+        type            nutUSpaldingWallFunction;
+        value           $internalField;
+    }
+    SHROUD
+    {
+        type            nutUSpaldingWallFunction;
+        value           $internalField;
+    }
+    PER1
+    {
+        type            cyclic;
+    }
+    PER2
+    {
+        type            cyclic;
+     }
+}
+
+
+// ************************************************************************* //

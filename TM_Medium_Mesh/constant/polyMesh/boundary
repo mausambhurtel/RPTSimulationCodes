@@ -1,0 +1,76 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  10
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       polyBoundaryMesh;
+    location    "constant/polyMesh";
+    object      boundary;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+7
+(
+    HUB
+    {
+        type            wall;
+        inGroups        List<word> 1(wall);
+        nFaces          26132;
+        startFace       4329436;
+    }
+    SHROUD
+    {
+        type            wall;
+        inGroups        List<word> 1(wall);
+        nFaces          26132;
+        startFace       4355568;
+    }
+    INFLOW
+    {
+        type            patch;
+        nFaces          5824;
+        startFace       4381700;
+    }
+    OUTFLOW
+    {
+        type            patch;
+        nFaces          3472;
+        startFace       4387524;
+    }
+    BLADE
+    {
+        type            wall;
+        inGroups        List<word> 1(wall);
+        nFaces          32592;
+        startFace       4390996;
+    }
+    PER1
+    {
+        type            cyclic;
+        inGroups        List<word> 1(cyclic);
+        nFaces          13664;
+        startFace       4423588;
+		neighbourPatch  PER2;
+		transform       rotational;
+		rotationCentre	(0 0 0);
+		rotationAxis	(0 0 1);
+    }
+    PER2
+    {
+        type            cyclic;
+        inGroups        List<word> 1(cyclic);
+        nFaces          13664;
+        startFace       4437252;
+		neighbourPatch  PER1;
+		transform       rotational;
+		rotationCentre	(0 0 0);
+		rotationAxis	(0 0 1);
+    }
+)
+
+// ************************************************************************* //

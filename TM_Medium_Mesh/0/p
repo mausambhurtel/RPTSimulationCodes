@@ -1,0 +1,56 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  10
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       volScalarField;
+    location    "0";
+    object      p;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 2 -2 0 0 0 0]; //indicate kinematic pressure, p divided by density
+
+internalField   uniform 0.0; //For water, 1 atm equals 101325 Pa. Kinematic pressure equals p divided by rho. Using rho = 1000 kg/m3, = 101325 / 1000 = 101.325 m2/s2.
+
+boundaryField
+{
+    INFLOW
+    {
+    	type            fixedFluxPressure;
+    	value           uniform 0.0;
+    }
+    OUTFLOW
+    {
+        type            fixedValue;
+        value           uniform 0.0;
+    }
+    BLADE
+    {
+	 type         zeroGradient;
+    }
+    HUB
+    {
+        type          zeroGradient;
+    }
+    SHROUD
+    {
+        type          zeroGradient;
+    }
+    PER1
+    {
+        type            cyclic;
+    }
+    PER2
+    {
+        type            cyclic;
+    }
+}
+
+
+// ************************************************************************* //

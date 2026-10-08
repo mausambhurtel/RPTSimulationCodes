@@ -1,0 +1,97 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2012                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      fvSolution;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+solvers
+{
+    p
+	{
+		solver          GAMG;
+		tolerance       1e-6;  // Tighter tolerance
+		relTol          0.01;
+		smoother        GaussSeidel;  // More robust than DICGaussSeidel
+		cacheAgglomeration true;  
+		nCellsInCoarsestLevel 10;
+		agglomerator    faceAreaPair;
+		mergeLevels     1;
+		maxIter         50;
+		nPreSweeps      0;
+		nPostSweeps     2;
+		nFinestSweeps   2;
+	}
+
+    Phi
+    {
+        solver          GAMG;
+        smoother        DIC;
+        tolerance       1e-6;
+        relTol          0.01;
+    }
+
+    Urel
+    {
+		solver	PBiCGStab;
+		relTol	0.01;
+		preconditioner	DILU;
+		tolerance	1e-6;
+		maxIter	100;
+    }
+
+    "(k|epsilon|R|nuTilda)"
+    {
+        solver          smoothSolver;
+        smoother        symGaussSeidel;
+        tolerance       1e-6;
+        relTol          0.01;
+    }
+
+    omega
+    {
+        solver          smoothSolver;
+        smoother        symGaussSeidel;
+        tolerance       1e-6;
+        relTol          0.01;
+    }
+}
+
+SIMPLE
+{
+	consistent	true;
+	nNonOrthogonalCorrectors	2;
+	residualControl
+	{
+		p	1.0E-6;
+		Urel	1.0E-6;
+		k	1.0E-6;
+		omega	1.0E-6;
+
+	}
+	pRefCell	0;
+	pRefValue	0.0;
+
+}
+
+
+relaxationFactors
+{
+	p	0.5;
+	Urel	0.5;
+	k	0.5;
+	omega	0.5;
+}
+
+
+
+// ************************************************************************* //

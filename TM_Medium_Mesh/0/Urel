@@ -1,0 +1,72 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  10
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       volVectorField;
+    location    "0";
+    object      Urel;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 1 -1 0 0 0 0];
+
+internalField   uniform (0 0 0);
+
+boundaryField
+{
+    INFLOW
+    {
+
+	type            swirlInletVelocity;
+	origin		(0 0 0);
+	axis		(0 0 1);
+        axialVelocity   constant 0;
+	radialVelocity  constant -14.8971;  //Cm at Inlet i.e. Wm (minus because the water is going inside)
+        tangentialVelocity  constant 53.4758;  //Wu at Inlet
+        value           uniform (0 0 0);
+ 
+   }
+
+    OUTFLOW
+    {
+        type            pressureInletOutletVelocity;
+        value           uniform (0 0 0);
+    }
+
+    BLADE
+    {
+        type            movingWallVelocity;	
+	value		uniform (0 0 0);
+    }
+
+    HUB
+    {
+        type            movingWallVelocity;	
+	value		uniform (0 0 0);
+    }
+
+    SHROUD
+    {
+        type            movingWallVelocity;	
+	value		uniform (0 0 0);
+    }
+
+    PER1
+    {
+        type            cyclic;
+    }
+
+    PER2
+    {
+        type            cyclic;
+    }
+}
+
+
+// ************************************************************************* //

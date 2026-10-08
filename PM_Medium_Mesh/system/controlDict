@@ -1,0 +1,238 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: Post-processing controlDict           |
+|  \\    /   O peration     | SIMPLIFIED: Use U directly from solver          |
+|   \\  /    A nd           |                                                 |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      controlDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+application     SRFSimpleFoam;
+
+startFrom       latestTime;
+startTime       0;
+stopAt          endTime;
+endTime         2500;
+deltaT          1;
+writeControl    timeStep;
+writeInterval   100;
+writeFormat     ascii;
+writePrecision  6;
+writeCompression off;
+timeFormat      general;
+timePrecision   6;
+runTimeModifiable true;
+
+functions
+{
+    residuals
+    {
+        type            residuals;
+        libs            ("libutilityFunctionObjects.so");
+        fields          (p Urel);
+        writeControl    timeStep;
+        writeInterval   1;
+    }
+
+    forces
+    {
+        type            forces;
+        libs            ("libforces.so");
+        executeControl  writeTime;
+        writeControl    writeTime;
+        patches         ("BLADE");
+        rho             rhoInf;
+        rhoInf          997;
+        log             true;
+        CofR            (0 0 0);
+        pitchAxis       (0 0 1);
+    }
+
+    volumetricFlowRate
+    {
+        type            coded;
+        libs            ("libutilityFunctionObjects.so");
+
+        codeWrite
+        #{
+            const fvMesh& mesh = refCast<const fvMesh>(obr_);
+
+            const word inletName  = "INFLOW";
+            const word outletName = "OUTFLOW";
+
+            const surfaceScalarField& phi =
+                mesh.lookupObject<surfaceScalarField>("phi");
+
+            const label inletID  = mesh.boundaryMesh().findPatchID(inletName);
+            const label outletID = mesh.boundaryMesh().findPatchID(outletName);
+
+            scalar Qin  = 0.0;
+            scalar Qout = 0.0;
+
+            if (inletID >= 0)
+            {
+                const scalarField& phiInlet = phi.boundaryField()[inletID];
+                Qin = gSum(phiInlet);
+            }
+            else if (Pstream::master())
+            {
+                Info << "volumetricFlowRate: Patch " << inletName << " not found. Using 0." << nl;
+            }
+
+            if (outletID >= 0)
+            {
+                const scalarField& phiOutlet = phi.boundaryField()[outletID];
+                Qout = gSum(phiOutlet);
+            }
+            else if (Pstream::master())
+            {
+                Info << "volumetricFlowRate: Patch " << outletName << " not found. Using 0." << nl;
+            }
+
+            if (Pstream::master())
+            {
+                Info << "\n================= SIMULATION INFO =================" << nl;
+                Info << "Qin  = " << Qin  << " m3/s" << nl;
+                Info << "Qout = " << Qout << " m3/s" << nl;
+
+                mkDir("postProcessing");
+                const fileName outputFile("postProcessing/volumetricFlowRate.dat");
+
+                // Use std::ofstream for simple, stable appends
+                std::ofstream os(outputFile.c_str(), std::ios::out | std::ios::app);
+                if (os.is_open())
+                {
+                    os << mesh.time().value() << " "
+                       << Qin << " "
+                       << Qout << "\n";
+                    os.flush();
+                    os.close();
+                }
+            }
+
+            return true;
+        #};
+
+        executeControl  timeStep;
+        writeControl    timeStep;
+        log             true;
+    }
+
+    headProduced
+    {
+        type            coded;
+        libs            ("libutilityFunctionObjects.so");
+        name            calculateHead;
+        
+        codeWrite
+        #{
+            const fvMesh& mesh = refCast<const fvMesh>(obr_);
+            
+            label inletID = mesh.boundaryMesh().findPatchID("INFLOW");
+            label outletID = mesh.boundaryMesh().findPatchID("OUTFLOW");
+            
+            const volScalarField& p = mesh.lookupObject<volScalarField>("p");
+            
+            // Use U directly - it's already the absolute velocity (Ustn)
+            const volVectorField& U = mesh.lookupObject<volVectorField>("U");
+            
+            const surfaceScalarField& phi = mesh.lookupObject<surfaceScalarField>("phi");
+            
+            scalar rho = 997.0;  // kg/m³
+            scalar pRef = 0.0;   // Pa (gauge pressure)
+            scalar g = 9.81;     // m/s²
+            
+            // Get boundary patches
+            const fvPatch& inletPatch = mesh.boundary()[inletID];
+            const fvPatch& outletPatch = mesh.boundary()[outletID];
+            
+            // Get boundary field values at faces
+            const scalarField& pInlet = p.boundaryField()[inletID];
+            const scalarField& pOutlet = p.boundaryField()[outletID];
+            const vectorField& UInlet = U.boundaryField()[inletID];
+            const vectorField& UOutlet = U.boundaryField()[outletID];
+            const scalarField& phiInlet = phi.boundaryField()[inletID];
+            const scalarField& phiOutlet = phi.boundaryField()[outletID];
+            
+            // Calculate p0 at each face using ANSYS Eq. 1.53:
+            // p_tot,stn = p_stat + ½ρ(U_stn·U_stn)
+            
+            scalarField p0Inlet(inletPatch.size(), 0.0);
+            scalarField p0Outlet(outletPatch.size(), 0.0);
+            
+            // Inlet
+            forAll(p0Inlet, faceI)
+            {
+                scalar pStatic = pInlet[faceI] * rho + pRef;
+                p0Inlet[faceI] = pStatic + 0.5 * rho * magSqr(UInlet[faceI]);
+            }
+            
+            // Outlet
+            forAll(p0Outlet, faceI)
+            {
+                scalar pStatic = pOutlet[faceI] * rho + pRef;
+                p0Outlet[faceI] = pStatic + 0.5 * rho * magSqr(UOutlet[faceI]);
+            }
+            
+            // Mass-flow weighted average
+            scalar phiInletSum = gSum(mag(phiInlet));
+            scalar phiOutletSum = gSum(mag(phiOutlet));
+            
+            scalar p0_inlet = gSum(mag(phiInlet) * p0Inlet) / (phiInletSum + SMALL);
+            scalar p0_outlet = gSum(mag(phiOutlet) * p0Outlet) / (phiOutletSum + SMALL);
+            
+            // Calculate head
+            scalar head = (p0_outlet - p0_inlet) / (rho * g);
+            
+            // Output
+            Info << "Pin = " << p0_inlet << " Pa" << endl;
+            Info << "Pout = " << p0_outlet << " Pa" << endl;
+            Info << "deltaP = " << (p0_outlet - p0_inlet) << " Pa" << endl;
+            Info << "Head Produced = " << head << " m" << endl;
+            Info << "========================================================\n" << endl;
+            
+            // Write to file
+            if (Pstream::master())
+            {
+                mkDir("postProcessing");
+                fileName outputFile("postProcessing/headProduced.dat");
+                
+                std::ofstream file;
+                file.open(outputFile, std::ios::out | std::ios::app);
+                
+                if (file.is_open())
+                {
+                    file << mesh.time().value() << " " 
+                         << head << " " 
+                         << p0_inlet << " " 
+                         << p0_outlet << "\n";
+                    file.flush();
+                    file.close();
+                }
+            }
+        #};
+        
+        executeControl  timeStep;
+        writeControl    timeStep;
+        log             true;
+    }
+
+    yPlus1
+    {
+        type            yPlus;
+        libs            ("libfieldFunctionObjects.so");
+        patches         ("BLADE");
+        executeControl  writeTime;
+        writeControl    writeTime;
+        log             true;
+    }
+}
+
+// ************************************************************************* //
